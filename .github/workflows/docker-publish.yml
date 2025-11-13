@@ -1,63 +1,51 @@
-name: Next.js CI/CD
+name: Deploy Next.js App to aaPanel Server
 
 on:
   push:
-    branches: [ "main" ]   # trigger on push to main branch
+    branches:
+      - main  # Trigger on pushes to the main branch
 
 jobs:
-  build:
-    name: Build & Push Docker Image
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      # Step 1: Checkout the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      # Step 2: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-      - name: Login to Docker Hub
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build Next.js app and create Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest .
+      # Step 4: Build the Next.js project
+      - name: Build Next.js
+        run: npm run build
 
-      - name: Push image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
+      # Step 5: Copy files to server
+      - name: Upload to aaPanel server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: ".next/* package.json next.config.js public"
+          target: ${{ secrets.SERVER_PATH }}
 
-
-  deploy:
-    name: Deploy on AWS Lightsail
-    needs: build
-    runs-on: self-hosted   # your Lightsail GitHub runner
-
-    steps:
-      - name: Login to Docker Hub
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Pull latest Docker image
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
-
-      - name: Stop and remove old container (if exists)
-        run: docker rm -f nextjs-app-container || true
-
-      - name: Run updated Next.js container
-        run: |
-          docker run -d \
-            --name nextjs-app-container \
-            -p 3000:3000 \
-            -e NODE_ENV=production \
-            -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-            ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
-
-
-      - name: Run updated Next.js container
-        run: |
-          docker run -d \
-            --name nextjs-app-container \
-            -p 3000:3000 \
-            --restart unless-stopped \
-            -e NODE_ENV=production \
-            -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-            ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
+      # Step 6: Restart app on server using PM2
+      - name: Restart Next.js app
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ${{ secrets.SERVER_PATH }}
+            npm install --production
+            pm2 restart nextjs-app || pm2 start npm --name "nextjs-app" -- start

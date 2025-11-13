@@ -5,7 +5,7 @@ pipeline {
         stage('SCM Checkout') {
             steps {
                 retry(3) {
-                    git branch: 'main', url: 'https://github.com/Mayuru0/aws_docker_jenkins.git'
+                    git branch: 'main', url: 'https://github.com/Mayuru0/Nexjs-game-website.git'
                 }
             }
         }

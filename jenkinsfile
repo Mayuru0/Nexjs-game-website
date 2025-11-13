@@ -9,29 +9,54 @@ pipeline {
                 }
             }
         }
+
         stage('Build Docker Image') {
             steps {  
-                bat 'docker build -t mayuru001/build-1-10:%BUILD_NUMBER% .'
+                sh 'docker build -t mayuru001/build-1-10:$BUILD_NUMBER .'
             }
         }
+
         stage('Login to Docker Hub') {
             steps {
-                withCredentials([string(credentialsId: 'docker-password', variable: 'docker-password')]) {
-                    script {
-                        bat "docker login -u mayuru001 -p %docker-password%"
-                    }
+                withCredentials([string(credentialsId: 'docker-password', variable: 'DOCKER_PASSWORD')]) {
+                    sh 'echo $DOCKER_PASSWORD | docker login -u mayuru001 --password-stdin'
                 }
             }
         }
+
         stage('Push Image') {
             steps {
-                bat 'docker push mayuru001/build-1-10:%BUILD_NUMBER%'
+                sh 'docker push mayuru001/build-1-10:$BUILD_NUMBER'
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                script {
+                    // Stop and remove old container if exists
+                    sh 'docker rm -f nextjs-app-container || true'
+
+                    // Pull latest image from Docker Hub
+                    sh 'docker pull mayuru001/build-1-10:$BUILD_NUMBER'
+
+                    // Run new container
+                    sh '''
+                    docker run -d \
+                        --name nextjs-app-container \
+                        -p 3000:3000 \
+                        --restart unless-stopped \
+                        -e NODE_ENV=production \
+                        -e NEXT_PUBLIC_API_URL=http://localhost:3000 \
+                        mayuru001/build-1-10:$BUILD_NUMBER
+                    '''
+                }
             }
         }
     }
+
     post {
         always {
-            bat 'docker logout'
+            sh 'docker logout'
         }
     }
 }

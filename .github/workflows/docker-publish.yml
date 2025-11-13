@@ -1,0 +1,63 @@
+name: Next.js CI/CD
+
+on:
+  push:
+    branches: [ "main" ]   # trigger on push to main branch
+
+jobs:
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Next.js app and create Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest .
+
+      - name: Push image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
+
+
+  deploy:
+    name: Deploy on AWS Lightsail
+    needs: build
+    runs-on: self-hosted   # your Lightsail GitHub runner
+
+    steps:
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Pull latest Docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
+
+      - name: Stop and remove old container (if exists)
+        run: docker rm -f nextjs-app-container || true
+
+      - name: Run updated Next.js container
+        run: |
+          docker run -d \
+            --name nextjs-app-container \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest
+
+
+      - name: Run updated Next.js container
+        run: |
+          docker run -d \
+            --name nextjs-app-container \
+            -p 3000:3000 \
+            --restart unless-stopped \
+            -e NODE_ENV=production \
+            -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            ${{ secrets.DOCKER_USERNAME }}/my-nextjs-app:latest

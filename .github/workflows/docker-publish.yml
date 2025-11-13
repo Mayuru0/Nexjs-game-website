@@ -1,4 +1,4 @@
-name: Portfolio Frontend CI
+name: gamehub Frontend CI
 
 on:
   push:
@@ -32,12 +32,12 @@ jobs:
 
       - name: Stop existing PM2 app (if running)
         run: |
-          pm2 stop nextjs_portfolio || true
-          pm2 delete nextjs_portfolio || true
+          pm2 stop gamehub || true
+          pm2 delete gamehub || true
 
       - name: Start Next.js app with PM2
         run: |
-          pm2 start npm --name "nextjs_portfolio" -- run start
+          pm2 start npm --name "gamehub" -- run start
           pm2 save
 
       - name: Verify PM2 status

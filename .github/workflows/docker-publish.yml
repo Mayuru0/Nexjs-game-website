@@ -3,14 +3,14 @@ name: Deploy Next.js App to aaPanel Server
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch
+      - main   # Trigger deployment only when code is pushed to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,23 +24,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Step 4: Build the Next.js project
-      - name: Build Next.js
+      # Step 4: Build Next.js project
+      - name: Build project
         run: npm run build
 
-      # Step 5: Copy files to server
+      # Step 5: Verify build output (optional for debugging)
+      - name: List build output
+        run: ls -R .next
+
+      # Step 6: Upload files to aaPanel server
       - name: Upload to aaPanel server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: ".next/* package.json next.config.js public"
+          source: |
+            .next
+            public
+            package.json
+            next.config.js
           target: ${{ secrets.SERVER_PATH }}
+          strip_components: 0
 
-
-      # Step 6: Restart app on server using PM2
-      - name: Restart Next.js app
+      # Step 7: Restart Next.js app on server
+      - name: Restart Next.js app with PM2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_IP }}

@@ -38,6 +38,7 @@ jobs:
           source: ".next/* package.json next.config.js public"
           target: ${{ secrets.SERVER_PATH }}
 
+
       # Step 6: Restart app on server using PM2
       - name: Restart Next.js app
         uses: appleboy/ssh-action@v1.2.0

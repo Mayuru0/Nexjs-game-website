@@ -38,6 +38,16 @@ export default function HomePage() {
       category: "Shooter",
       featured: true,
     },
+    {
+      id: "4",
+      title: "Space Defender",
+      description: "Defend Earth from alien invasion in this intense shooter",
+      image: "/placeholder.svg?height=300&width=400",
+      downloads: "15.1K",
+      rating: 4.9,
+      category: "Shooter",
+      featured: true,
+    },
   ]
 
   const popularGames = [

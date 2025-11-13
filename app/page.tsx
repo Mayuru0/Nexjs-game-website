@@ -68,7 +68,17 @@ export default function HomePage() {
       rating: 4.8,
       category: "Strategy",
     },
+    {
+      id: "7",
+      title: "Tower Defense Pro",
+      description: "Strategic tower defense with unique upgrade paths",
+      image: "/placeholder.svg?height=200&width=300",
+      downloads: "22.1K",
+      rating: 4.8,
+      category: "Strategy",
+    },
   ]
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">

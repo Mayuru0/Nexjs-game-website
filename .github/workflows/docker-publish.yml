@@ -3,14 +3,14 @@ name: Deploy Next.js App to aaPanel Server
 on:
   push:
     branches:
-      - main   # Trigger deployment only when code is pushed to main branch
+      - main   # Trigger workflow when pushing to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout code
+      # Step 1: Checkout your code
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -28,9 +28,15 @@ jobs:
       - name: Build project
         run: npm run build
 
-      # Step 5: Verify build output (optional for debugging)
-      - name: List build output
-        run: ls -R .next
+      # Step 5: Verify build output before upload (for debugging)
+      - name: Check build output
+        run: |
+          echo "=== Root Directory ==="
+          ls -la
+          echo "=== .next Directory ==="
+          ls -la .next || echo ".next folder not found!"
+          echo "=== public Directory ==="
+          ls -la public || echo "public folder not found!"
 
       # Step 6: Upload files to aaPanel server
       - name: Upload to aaPanel server
@@ -40,14 +46,14 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: |
-            .next
-            public
+            .next/
+            public/
             package.json
             next.config.js
           target: ${{ secrets.SERVER_PATH }}
           strip_components: 0
 
-      # Step 7: Restart Next.js app on server
+      # Step 7: Restart the Next.js app on aaPanel server using PM2
       - name: Restart Next.js app with PM2
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -56,5 +62,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd ${{ secrets.SERVER_PATH }}
+            echo "Installing production dependencies..."
             npm install --production
+            echo "Restarting Next.js app with PM2..."
             pm2 restart nextjs-app || pm2 start npm --name "nextjs-app" -- start

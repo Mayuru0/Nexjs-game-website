@@ -29,6 +29,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+
 # Stage 2 - production
 FROM node:24.6.0-alpine
 WORKDIR /app

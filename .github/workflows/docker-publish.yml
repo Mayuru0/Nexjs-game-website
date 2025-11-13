@@ -1,68 +1,44 @@
-name: Deploy Next.js App to aaPanel Server
+name: Portfolio Frontend CI
 
 on:
   push:
-    branches:
-      - main   # Trigger workflow when pushing to main branch
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        node-version: [24.6.0]
 
     steps:
-      # Step 1: Checkout your code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      # Step 4: Build Next.js project
-      - name: Build project
+      - name: Build Next.js app
         run: npm run build
 
-      # Step 5: Verify build output before upload (for debugging)
-      - name: Check build output
+      - name: Stop existing PM2 app (if running)
         run: |
-          echo "=== Root Directory ==="
-          ls -la
-          echo "=== .next Directory ==="
-          ls -la .next || echo ".next folder not found!"
-          echo "=== public Directory ==="
-          ls -la public || echo "public folder not found!"
+          pm2 stop nextjs_portfolio || true
+          pm2 delete nextjs_portfolio || true
 
-      # Step 6: Upload files to aaPanel server
-      - name: Upload to aaPanel server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: |
-            .next/
-            public/
-            package.json
-            next.config.js
-          target: ${{ secrets.SERVER_PATH }}
-          strip_components: 0
+      - name: Start Next.js app with PM2
+        run: |
+          pm2 start npm --name "nextjs_portfolio" -- run start
+          pm2 save
 
-      # Step 7: Restart the Next.js app on aaPanel server using PM2
-      - name: Restart Next.js app with PM2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd ${{ secrets.SERVER_PATH }}
-            echo "Installing production dependencies..."
-            npm install --production
-            echo "Restarting Next.js app with PM2..."
-            pm2 restart nextjs-app || pm2 start npm --name "nextjs-app" -- start
+      - name: Verify PM2 status
+        run: pm2 list

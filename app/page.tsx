@@ -92,8 +92,7 @@ export default function HomePage() {
               </Link>
               <Link href="/about" className="text-white/80 hover:text-purple-400 transition-colors">
                 About
-              </Link>
-              
+              </Link>     
             </nav>
             <Button
               variant="outline"
